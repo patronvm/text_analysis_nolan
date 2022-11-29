@@ -1,0 +1,161 @@
+---
+title: "text_analysis_CBE2"
+author: "Handi Yang"
+date: "11/17/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(cmu.textstat)
+library(readtext)
+library(tidyverse)
+library(quanteda)
+library(quanteda.textstats)
+library(ggraph)
+library(corpus)
+library(syuzhet)
+library(udpipe)
+library(pseudobibeR)
+library(readr)
+library(nFactors)
+library(future.apply)
+library(wordcloud)
+library(tidytext)
+library(tm)
+```
+
+```{r}
+# load data
+script_df <- readtext("/Users/yanghandi/Desktop/468_final_project/data") %>%
+  mutate(text = preprocess_text(text,
+                                contractions = TRUE,
+                                hypens = TRUE,
+                                punctuation = TRUE,
+                                lower_case = TRUE,
+                                accent_replace = TRUE,
+                                remove_numbers = TRUE))
+
+script <- corpus(script_df)
+# script_tokens <- tokens(script)
+
+```
+
+```{r Assign meta data}
+# summary of dataset
+script_name <- str_extract(script_df$doc_id, "^[a-z]+")
+release_year <- c(2005, 2008, 2012, 2010, 2020, 2014, 1998, 2002, 2000, 2006, 2017)
+docvars(script, field = "text_type") <- script_name
+docvars(script, field = "year") <- release_year
+knitr::kable(script %>% summary(), caption = "Summary of Norlan film corpus.")
+```
+
+```{r}
+# frequency
+script_dfm <- dfm(script)
+freq_df <- textstat_frequency(script_dfm) %>%
+  data.frame(stringsAsFactors = F)
+knitr::kable(freq_df[1:20,], caption = "The 20 most frequent tokens in the script corpus.")
+# war movie
+war_dfm <- dfm_subset(script_dfm, text_type == "war")
+war_freq_df <- textstat_frequency(war_dfm) %>%
+  data.frame(stringsAsFactors = F)
+knitr::kable(war_freq_df[1:20,], caption = "The 20 most frequent tokens in the war movie corpus.")
+# scientific
+scientific_dfm <- dfm_subset(script_dfm, text_type == "scientific")
+scie_freq_df <- textstat_frequency(scientific_dfm) %>%
+  data.frame(stringsAsFactors = F)
+knitr::kable(scie_freq_df[1:20,], caption = "The 20 most frequent tokens in the scientific movie corpus.")
+# action
+action_dfm <- dfm_subset(script_dfm, text_type == "action")
+act_freq_df <- textstat_frequency(action_dfm) %>%
+  data.frame(stringsAsFactors = F)
+knitr::kable(act_freq_df[1:20,], caption = "The 20 most frequent tokens in the actio n movie corpus.")
+# thriller
+thriller_dfm <- dfm_subset(script_dfm, text_type == "thriller")
+thr_freq_df <- textstat_frequency(thriller_dfm) %>%
+  data.frame(stringsAsFactors = F)
+knitr::kable(thr_freq_df[1:20,], caption = "The 20 most frequent tokens in the thriller movie corpus.")
+```
+
+```{r}
+# wayne collocation - does not necessary to include
+wayne_collocations <- collocates_by_MI(script_tokens, "wayne")
+mc <- wayne_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
+knitr::kable(head(wayne_collocations), digits = 3)
+knitr::kable(head(mc), digits = 3)
+```
+
+```{r}
+# keyness - not necessary to include
+corpus_comp <- ntoken(script_dfm) %>% 
+  data.frame(Tokens = .) %>%
+  rownames_to_column("Text_Type") %>%
+  mutate(Text_Type = str_extract(Text_Type, "^[a-z]+")) %>%
+  group_by(Text_Type) %>%
+  dplyr::summarize(Texts = n(),
+    Tokens = sum(Tokens)) %>%
+  mutate(Text_Type = c("war", "scientific", "action", "thriler")) %>%
+  rename("Text-Type" = Text_Type) %>%
+  janitor::adorn_totals()
+```
+
+```{r}
+# scientific
+scientific_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "text_type") == "scientific", measure = "lr")
+kableExtra::kbl(head(scientific_kw), caption = "Tokens with the highest keyness values in the scientific text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position") %>%
+  kableExtra::kable_classic()
+```
+```{r}
+# thriller
+thriller_dfm <- dfm_subset(script_dfm, text_type == "thriller")
+thriller_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "text_type") == "thriller", measure = "lr")
+kableExtra::kbl(head(thriller_kw), caption = "Tokens with the highest keyness values in the thriller text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position") %>%
+  kableExtra::kable_classic()
+```
+```{r}
+# war
+war_dfm <- dfm_subset(script_dfm, text_type == "war")
+war_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "text_type") == "war", measure = "lr")
+kableExtra::kbl(head(war_kw), caption = "Tokens with the highest keyness values in the war text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position") %>%
+  kableExtra::kable_classic()
+```
+
+```{r}
+
+```
+
+collocations
+```{r}
+# collocation protagonist
+```
+
+```{r}
+science_sus <- keyness_table(scientific_dfm, suspense_dfm)
+kableExtra::kbl(head(science_sus), caption = "Tokens with the highest keyness values in the scientific movie when compared to other genre.", booktabs = T, linesep = "", digits = 2) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position") %>%
+  kableExtra::kable_classic()
+```
+```{r}
+sus_science <- keyness_table(suspense_dfm, scientific_dfm)
+kableExtra::kbl(head(sus_science), caption = "Tokens with the highest keyness values in the suspense movie when compared to the scientific movie.", booktabs = T, linesep = "", digits = 2) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position") %>%
+  kableExtra::kable_classic()
+
+```
+```{r}
+con_collocations <- collocates_by_MI(script_tokens, "continuous")
+mc <- con_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
+knitr::kable(head(con_collocations), digits = 3)
+knitr::kable(head(mc), digits = 3)
+```
+
+
+
