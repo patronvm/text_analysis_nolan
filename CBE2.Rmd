@@ -31,19 +31,38 @@ library(tm)
 
 ```{r}
 # load data
+setwd("/Users/yanghandi/Desktop")
 script_df <- readtext("/Users/yanghandi/Desktop/468_final_project/data") %>%
-  mutate(text = preprocess_text(text,
-                                contractions = TRUE,
-                                hypens = TRUE,
-                                punctuation = TRUE,
-                                lower_case = TRUE,
-                                accent_replace = TRUE,
-                                remove_numbers = TRUE))
-
+   mutate(text = preprocess_text(text,
+                                 contractions = TRUE,
+                                 hypens = TRUE,
+                                 punctuation = TRUE,
+                                 # lower_case = TRUE,
+                                 accent_replace = TRUE,
+                                 remove_numbers = TRUE))
 script <- corpus(script_df)
-# script_tokens <- tokens(script)
+script_tokens <- tokens(script)
+script_dfm <- dfm(script) %>% convert(to = "data.frame") %>% 
+  subset(select = -c(wayne, bruce))
+
+
+
+
+
 
 ```
+
+```{r}
+ud_model <- udpipe_load_model("english-ewt-ud-2.5-191206.udpipe")
+# parse data
+script_prsd <- udpipe_annotate(ud_model, x = script_df$text, doc_id = script_df$doc_id)
+# convert to dataframe
+script_prsd <- data.frame(script_prsd, stringsAsFactors = F)
+# biber
+script_biber <- biber_udpipe(script_prsd)
+```
+
+
 
 ```{r Assign meta data}
 # summary of dataset
@@ -56,7 +75,7 @@ knitr::kable(script %>% summary(), caption = "Summary of Norlan film corpus.")
 
 ```{r}
 # frequency
-script_dfm <- dfm(script)
+
 freq_df <- textstat_frequency(script_dfm) %>%
   data.frame(stringsAsFactors = F)
 knitr::kable(freq_df[1:20,], caption = "The 20 most frequent tokens in the script corpus.")
@@ -155,6 +174,11 @@ con_collocations <- collocates_by_MI(script_tokens, "continuous")
 mc <- con_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
 knitr::kable(head(con_collocations), digits = 3)
 knitr::kable(head(mc), digits = 3)
+```
+
+```{r}
+# select specific word from each text
+
 ```
 
 
