@@ -1,5 +1,6 @@
 ---
-title: "468_cbe2"
+title: "Comparison Between the Prounons *i*, *you*, and *it* in Nolan's Sci-Fi movie and Action movie"
+subtitle: "36468 Text Analysis - Coffee Break Experiment II"
 author: "Haley Jiang"
 date: "2022-11-19"
 output: pdf_document
@@ -15,22 +16,40 @@ library(nnet)
 library(quanteda.textstats)
 ```
 
-## Load data
-
 ```{r read_files, echo=FALSE}
 nolan_files_list <- list.files("data", full.names = T)
 
-nolan_files_list
+# nolan_files_list
 ```
 
-```{r}
+# Introduction
+
+Christopher Nolan is one of the most reputational film director, producer, and screenwriter in the world. The films he directed including genres Action, Sci-Fi, Crime, and Thriller are representative. His films explains creative and abstract science fiction and convey thrilling emotion through actions. Does the character tend to use more words to explain about the phenomenon in science fiction than in action movie? Since pronouns often come into play in explanation, we would like to know whether there is more prouns in Nolan's Sci-Fi movies than in his Action movies. This Coffee-Break Experiment will specifically focus on the pronouns *i*, *you*, and *it* to perform Exploratory Data Analysis (EDA) and keyness analysis to explore the question of whether the frequency of the pronouns *i*, *you*, and *it* are the same in Sci-Fi and in action movie. 
+
+
+# Data
+
+This experiment is based on the scripts of the 11 movies that Nolan directed so far. Our scripts data was collected from [The Internet Movie Script Database](https://imsdb.com/). We further manually assigned meta data from IMDB to our movie scripts data, including release year, film name, and film genres. Specifically, released year ranging from 1998 to 2020 and film genres were divided into action, crime, sci-fi, and thriller. To investigate in the question of whether there are differences between sci-fi movie and action movie in using the pronous *i*, *you*, and *it*, we extracted two subcorpora that are associated with the two genres of movie from our full dataset. 
+
+Table 1 shows the summary of two corpora. 4 texts with 8196 tokens found in the sci-fi movie genre corpus and 4 texts with 8099 tokens found in the action movie genre corpus. The two corpora are originated from the same corpus with identical collecting mechanism which makes them comparable. We deemed sci-fi movie genre corpus as our corpus of interest and action movie genre corpus as the reference corpus.
+
+
+```{r, echo=FALSE}
 nolan_meta <- tibble(doc_id = nolan_files_list,
                      year = c(2005,2012, 2008, 2017, 1998, 2010,
                               2002, 2014, 2000, 2006, 2020),
-                     movie = c("batman_begins", "dark_knight_rises", "dark_knight",
-                               "dunkirk", "following", "incepetion", "insomnia",
-                               "interstallar", "memento", "prestige", "tenet"))
-  
+                     film = c("batman_begins", "dark_knight_rises", "dark_knight",
+                               "dunkirk", "following", "inception", "insomnia",
+                               "interstellar", "memento", "prestige", "tenet"),
+                     genre = c("action", "action", "action",
+                                  "action", "crime", "sci-fi", "thriller",
+                                  "sci-fi", "thriller", "sci-fi", "sci-fi"))
+
+# dunkirk = war
+# prestige = thriller
+# following = thriller
+# momento = thriller
+# insomnia = thriller
 nolan_corpus <- nolan_files_list %>%
   readtext::readtext() %>%
   mutate(text = preprocess_text(text,
@@ -43,9 +62,194 @@ nolan_corpus <- nolan_files_list %>%
   corpus()
 
 docvars(nolan_corpus) <- nolan_meta
+
+sub_corpus <- nolan_corpus[nolan_corpus$genre == "action" | 
+                           nolan_corpus$genre == "sci-fi",]
+
+action_corpus <- nolan_corpus[nolan_corpus$genre == "action",]
+
+scifi_corpus <- nolan_corpus[nolan_corpus$genre == "sci-fi",]
+```
+
+```{r, echo=FALSE}
+# nolan_dfm <- nolan_corpus %>%
+#   tokens(what="fastestword", remove_symbols = TRUE) %>%
+#   tokens_compound(pattern = phrase(multiword_expressions)) %>%
+#   dfm()
+
+sub_dfm <- sub_corpus %>%
+  tokens(what="fastestword", remove_symbols = TRUE) %>%
+  tokens_compound(pattern = phrase(multiword_expressions)) %>%
+  dfm()
+
+sub_dfm <- dfm_trim(sub_dfm, min_termfreq = 1)
+
+action_dfm <- dfm_subset(sub_dfm, genre == "action") %>% 
+  dfm_trim(min_termfreq = 1)
+
+scifi_dfm <- dfm_subset(sub_dfm, genre == "sci-fi") %>% 
+  dfm_trim(min_termfreq = 1)
+```
+
+```{r}
+sub_summary <- tibble(Subcorpus = c("Words (tokens)", "Files"),
+                      SciFi = c(ncol(scifi_dfm), 4),
+                      Action = c(ncol(action_dfm), 4))
+                       
+
+kableExtra::kbl(head(sub_summary), caption = "Subcorpora data summary", booktabs = T, linesep = "", digits = 2) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position") %>%
+  kableExtra::kable_classic()
+```
+
+The texts were preprocessed by separating contractions and hypenated words each into two tokens, remove punctuation, numbers, and symbols, making all tokens lower case, and replacing accented characters with corresponding un-accented characters. The corpora were then tokenized by splitting at space with corresponding document-feature matrices associated with action and research paper paper type being created where documents were in rows and tokens were in columns with the occurrences of each token in each document being counted to fill the entries of the matrix.
+
+# Methods
+  
+  We proceeded EDA by inspecting histograms of the frequencies of the words *i*, *you*, and *it* in sci-fi movie genre corpus and actio movie genre corpus. The bin-width ($h$) was chosen by the Freedman-Diaconis rule, specifically, 
+  $$h = 2 x \frac{IQR(x)}{n^{1/3}}$$ 
+  Outliers observed on the histograms were further investigated based on the histograms.
+
+  To answer our research question, we performed three hypothesis tests corresponding to the word *i*, *you*, and *it* separately. For each of the word, our null hypothesis is that there is no difference between the frequencies of the word in sci-fi movie genre corpus and action movie genre corpus.
+
+We applied Log-Likelihood (LL) statistic to test our null hypotheses and to proceed keyness analysis considering the two corpora were different in size. We further measured the effect size using Log Ratio.
+
+# Results
+
+## Exploratory Data Analysis (EDA)
+
+  We plotted histograms of the words *i*, *you*, and *it* in sci-fi corpus and action corpus for EDA. Figure 1 and figure 2 displayed the histogram of words *i*, *you*, and *it* in sci-fi corpus and action corpus respectively, where relative frequency per thousand word was plotted on the x-axis and the number of texts was plotted on the y-axis. The pink bars represent the distribution of the *i* was in each corpus, the green bars represent the  distribution of the *you* was in each corpus, while the blue bars represent the distribution of the word *it* in each corpus. 
+  
+  We observed from the plot that the distribution of *i* and *you* in the sci-fi corpus were right-skewed. *i* seems uniformly distributed in the action corpus and *you* was skew to the left in the action corpus. *it* seems fairly normal in both corpora. No potential outlier was detected from the histograms.
+
+```{r, echo=FALSE,fig.width=8, fig.height=4, fig.cap="Distribution of words in the scifi corpus"}
+scifi_prop_dfm <- dfm_weight(scifi_dfm, scheme = "prop")
+
+scifi_freq_df <- textstat_frequency(scifi_dfm) %>%
+  data.frame(stringsAsFactors = F)
+
+# Note "regex" rather than "fixed"
+scifi_word_df <- dfm_select(scifi_prop_dfm, 
+                               "^you$|^it$|^i$", valuetype = "regex")
+
+# Now we'll convert our selection and normalize to 10000 words.
+scifi_word_df <- scifi_word_df %>% 
+  convert(to = "data.frame") %>%
+  mutate(you = you*100000) %>%
+  mutate(it = it*100000) %>% 
+  mutate(i = i*100000) 
+
+# Use "pivot_longer" to go from a wide format to a long one
+scifi_word_df  <- scifi_word_df  %>% 
+  pivot_longer(!doc_id, names_to = "token", values_to = "RF") %>% 
+  mutate(token = factor(token))
+
+
+bin_width <- function(x){
+  2 * IQR(x) / length(x)^(1/3)
+}
+
+
+plot1 <- ggplot(scifi_word_df,aes(x = RF, color = token, fill = token)) + 
+  geom_histogram(binwidth = bin_width(scifi_word_df$RF), 
+                 alpha=.5, position = "identity") +
+  theme_classic() +
+  theme(axis.text = element_text(size=5)) +
+  theme(legend.position = "none") +
+  xlab("RF (per 100,000 words)") +
+  facet_wrap(~ token) + 
+  labs(title = "Histogram of the words 'you', 'it', and 'i' in the sci-fi corpus")
+
+plot1
 ```
 
 
-## Parse data
+```{r, echo=FALSE,fig.width=8, fig.height=4, fig.cap="Distribution of words in the action corpus"}
+action_prop_dfm <- dfm_weight(action_dfm, scheme = "prop")
 
+action_freq_df <- textstat_frequency(action_dfm) %>%
+  data.frame(stringsAsFactors = F)
+
+# Note "regex" rather than "fixed"
+action_word_df <- dfm_select(action_prop_dfm, 
+                               "^you$|^it$|^i$", valuetype = "regex")
+
+# Now we'll convert our selection and normalize to 10000 words.
+action_word_df <- action_word_df %>% 
+  convert(to = "data.frame") %>%
+  mutate(you = you*100000) %>%
+  mutate(it = it*100000) %>% 
+  mutate(i = i*100000) 
+
+# Use "pivot_longer" to go from a wide format to a long one
+action_word_df <- action_word_df %>% 
+  pivot_longer(!doc_id, names_to = "token", values_to = "RF") %>% 
+  mutate(token = factor(token))
+
+
+plot2 <- ggplot(action_word_df,aes(x = RF, color = token, fill = token)) + 
+  geom_histogram(binwidth = bin_width(action_word_df$RF), 
+                 alpha=.5, position = "identity") +
+  theme_classic() +
+  theme(axis.text = element_text(size=5)) +
+  theme(legend.position = "none") +
+  xlab("RF (per 100,000 words)") +
+  facet_wrap(~ token) +
+  labs(title = "Histogram of the words 'you', 'it', and 'i'  in the action corpus")
+
+plot2
+
+# require(gridExtra)
+# grid.arrange(plot1, plot2, nrow=2)
+```
+
+  Table 2 shows the EDA summary of *i*, *you*, *it* in sci-fi and action corpora. The word *it* occurs 1222 times in the 4 texts labeled as sci-fi (target) corpus with the mean relative frequency of 1103.87 per 100,000 (SD = 350.69) and DP = 0.09. The word *i* occurs 1216 times in the 4 texts labeled as sci-fi (target) corpus with the mean relative frequency of 1098.45 per 100,000 (SD = 273.53) and DP = 0.14. The word *you* occurs 1694 times in the 4 texts labeled as sci-fi (target) corpus with the mean relative frequency of 1530.25 per 100,000 (SD = 355.8) and DP = 0.1. In comparison, the word *it* occurs 873 times in the 4 texts labeled as action (reference) corpus with the mean relative frequency of 1103.87 per 100,000 (SD = 652.79) and DP = 0.07. The word *i* occurs 1045 times in the 4 texts labeled as action (reference) corpus with the mean relative frequency of 1098.45 per 100,000 (SD = 152.8) and DP = 0.2. The word *you* occurs 1490 times in the 4 texts labeled as action (reference) corpus with the mean relative frequency of 1530.25 per 100,000 (SD = 581.04) and DP = 0.15. According to the fact that all of the six DP values associated with *i*, *you*, *it* in both corpora were close to 0, the tokens *i*, *you*, *it* were moderate dispersed in both target and reference corpus, which implies the difference we observed between our target and reference data would not be overly influenced by a small number of texts.
+
+```{r summary DP table, echo=FALSE}
+scifi_kw <- keyness_table(scifi_dfm, action_dfm) 
+
+sum_eda <- scifi_kw[, c(1, 5:10)] %>% 
+  filter(Token ==  "you" | Token == "it" | Token == "i") %>%
+  mutate(SD_Tar = c(sd(scifi_word_df[scifi_word_df$token == "you",]$RF),
+                    sd(scifi_word_df[scifi_word_df$token == "it",]$RF),
+                    sd(scifi_word_df[scifi_word_df$token == "i",]$RF)),
+         SD_Ref = c(sd(action_word_df[action_word_df$token == "you",]$RF),
+                    sd(action_word_df[action_word_df$token == "it",]$RF),
+                    sd(action_word_df[action_word_df$token == "i",]$RF)))
+
+
+
+kableExtra::kbl(head(sum_eda), caption = "EDA summary of tokens 'it', 'i', and 'you' in each movie genre", booktabs = T, linesep = "", digits = 2) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position") %>%
+  kableExtra::kable_classic()
+```
+## Keyness analysis
+
+  As shown in Table 3, the pronoun *it* has the 101st highest keyness value. The keyness value of *i* ranked 1836 and the keyness value of *you* ranked 2008.
+  
+  The Log-likelihood statistic associated with the word *it* is 32.41 and corresponds to a p-value 0 < 0.05. Therefore, we have evidence in supporting that the difference between the use of *it* in sci-fi movie genre corpus and action movie genre corpus is statistically significant; this means that we have enough evidence in the data to reject the null hypothesis, which says that there is no difference between the frequencies of *it* in sci-fi movie genre corpus and action movie genre corpus. The effect size measured with Log Ratio is 0.36, which is interpret as the word *it* is about 1.3 times more common in sci-fi movie genre corpus and action movie genre corpus.
+
+  Moreover, the Log-likelihood statistic associated with the word *i* and *you* is 2.46 and 1.46 respectively and the corresponding p-value are 0.12 and 0.23, which are both greater than 0.05. Thus, we do not have enough evidence in supporting the difference between the use of *i* and *you* in sci-fi movie genre corpus and action movie genre corpus was statistically significant; this means that we do not have enough evidence in the data to reject the null hypothesis, which says that there is no difference between the frequencies of *was* in research paper corpus and report corpus.
+
+```{r, echo=FALSE}
+scifi_kw <- keyness_table(scifi_dfm, action_dfm) 
+
+kableExtra::kbl(scifi_kw[scifi_kw$Token == 'you' |
+                         scifi_kw$Token == 'it' |
+                         scifi_kw$Token == 'i' , 
+                         c(1:4)], 
+                caption = "Keyness values of 'you', 'it', and 'i' in Nolan's 
+                Sci-Fi movie when compared to Nolan's Action movie.", 
+                booktabs = T, linesep = "", digits = 2) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position") %>%
+  kableExtra::kable_classic()
+```
+# Discussion
+  
+  Our analysis demonstrates that the use of *it* does not use as same frequency in the sci-fi movie and action movies that Nolan directed. According to our keyness analysis, we have evidence in supporting the alternative hypothesis that there is difference between the frequencies of *it* in the sci-fi movie genre corpus and action movie genre corpus. The effect size measured with Log Ratio is interpret as the word *it* is about 1.3 times more common in sci-fi movie genre corpus and action movie genre corpus. On the other hand, we do not have enough evidence in supporting the difference between the use of *i* and *you* in sci-fi movie genre corpus and action movie genre corpus was statistically significant.
+  
+  We also realized some limitations within our data. First, our data set is relatively small which contains 152361 tokens in total. Data files corresponds to each category are limited. In our CBE above, since we have in total 4 files for each Sci-Fi genre and Action genre, it is hard to summarize the distribution of relative frequency. Besides, there is only one movie for each of the crime and thriller genre respectively, which could not be generalize to give conclusion about the commonality of Nolan's movie of that genres. In addition, when we looked at the keyness table of Sci-Fi movie genre, we noticed that the name of characters appears at a high rank. This is because the name of characters appears before the lines in the script. We might consider further process the data to elminate the character names from the script and re-do keyness analysis based on that. We will also observe the collocations related to the keywords as well as further multidimensional analysis.
+
+
+  
 
