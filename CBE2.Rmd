@@ -31,8 +31,8 @@ library(tm)
 
 ```{r}
 # load data
-setwd("/Users/yanghandi/Desktop")
-script_df <- readtext("/Users/yanghandi/Desktop/468_final_project/data") %>%
+# setwd("/Users/yanghandi/Desktop")
+script_df <- readtext("./data") %>%
    mutate(text = preprocess_text(text,
                                  contractions = TRUE,
                                  hypens = TRUE,
@@ -40,26 +40,72 @@ script_df <- readtext("/Users/yanghandi/Desktop/468_final_project/data") %>%
                                  # lower_case = TRUE,
                                  accent_replace = TRUE,
                                  remove_numbers = TRUE))
+
 script <- corpus(script_df)
+
+corpus <- script_df %>%
+  mutate(text_type = str_extract(doc_id, "^[a-z]+")) %>%
+  dplyr::select(doc_id, text)
+
+
+corpus_split <- split(corpus, seq(1, nrow(corpus), by = 10))
+
+library(future.apply)
+
+
+ncores <- 4L
+plan(multisession, workers = ncores)
+
+annotate_splits <- function(corpus_text) {
+  ud_model <- udpipe_load_model("english-ewt-ud-2.5-191206.udpipe")
+  x <- data.table::as.data.table(udpipe_annotate(ud_model, x = corpus_text$text,
+                                                 doc_id = corpus_text$doc_id))
+  return(x)
+}
+
+annotation <- future_lapply(corpus_split, annotate_splits, future.seed = T)
+
+annotation <- data.table::rbindlist(annotation)
+
+anno_edit <- annotation %>%
+  dplyr::select(doc_id, sentence_id, token_id, token, lemma, upos, xpos, head_token_id, dep_rel) %>%
+  rename(pos = upos, tag = xpos)
+
+anno_edit <- structure(anno_edit, class = c("spacyr_parsed", "data.frame"))
+
+
+tkns <- as.tokens(anno_edit, include_pos = "pos", concatenator = "_")
+
+doc_categories <- names(tkns) %>%
+  data.frame(text_type = .) %>%
+  mutate(text_type = str_extract(text_type, "^[a-z]+"))
+
+docvars(tkns) <- doc_categories
+
+script_dfm <- dfm(tkns)
+
+script_dfm <- tkns %>%
+  tokens_select("^.*[a-zA-Z0-9]+.*_propn", selection = "remove", valuetype = "regex", case_insensitive = T) %>%
+  dfm()
+
 script_tokens <- tokens(script)
-script_dfm <- dfm(script) %>% convert(to = "data.frame") %>% 
-  subset(select = -c(wayne, bruce))
-
-
-
-
-
 
 ```
 
 ```{r}
 ud_model <- udpipe_load_model("english-ewt-ud-2.5-191206.udpipe")
+
+annotation <- udpipe(script_df, "english")
+
 # parse data
 script_prsd <- udpipe_annotate(ud_model, x = script_df$text, doc_id = script_df$doc_id)
 # convert to dataframe
 script_prsd <- data.frame(script_prsd, stringsAsFactors = F)
 # biber
 script_biber <- biber_udpipe(script_prsd)
+```
+```{r}
+script_tokens %>%  tokens_select()
 ```
 
 
