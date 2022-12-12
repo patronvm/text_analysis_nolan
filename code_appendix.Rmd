@@ -175,7 +175,7 @@ thriller_tokens <- thriller_df %>%
   corpus() %>%
   tokens(what="fastestword", remove_numbers=TRUE)
 
-# get collocation far war corpus
+# get collocation far thriller corpus
 the_collocations <- collocates_by_MI(thriller_tokens, "the")
 mc <- the_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
 knitr::kable(head(the_collocations), digits = 3)
@@ -232,34 +232,28 @@ kableExtra::kbl(head(war_kw), caption = "Tokens with the highest keyness values 
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
 ```
-
 ```{r}
+
+# action
+action_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "text_type") == "action", measure = "lr")
+kableExtra::kbl(head(action_kw), caption = "Tokens with the highest keyness values in the action text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position") %>%
+  kableExtra::kable_classic()
 ```
 
-collocations
-```{r}
-# collocation protagonist
-```
 
-```{r}
-science_sus <- keyness_table(scientific_dfm, suspense_dfm)
-kableExtra::kbl(head(science_sus), caption = "Tokens with the highest keyness values in the scientific movie when compared to other genre.", booktabs = T, linesep = "", digits = 2) %>%
+```{r keynedd between action and thriler}
+thri_action <- keyness_table(thriller_dfm, action_dfm)
+kableExtra::kbl(head(thri_action), caption = "Tokens with the highest keyness values in the thriller movie when compared to action genre.", booktabs = T, linesep = "", digits = 2) %>%
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
 ```
 
 ```{r}
-sus_science <- keyness_table(suspense_dfm, scientific_dfm)
-kableExtra::kbl(head(sus_science), caption = "Tokens with the highest keyness values in the suspense movie when compared to the scientific movie.", booktabs = T, linesep = "", digits = 2) %>%
+action_thri <- keyness_table(action_dfm, thriller_dfm)
+kableExtra::kbl(head(action_thri), caption = "Tokens with the highest keyness values in the action movie when compared to the thriller movie.", booktabs = T, linesep = "", digits = 2) %>%
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
-```
-
-```{r}
-con_collocations <- collocates_by_MI(script_tokens, "continuous")
-mc <- con_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
-knitr::kable(head(con_collocations), digits = 3)
-knitr::kable(head(mc), digits = 3)
 ```
 
 
@@ -322,4 +316,10 @@ fviz_pca_biplot(pca,
                        color = "Movie categories") +
                   theme(legend.position = "bottom")
 ```
+
+
+
+
+
+
 
