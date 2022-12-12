@@ -110,11 +110,11 @@ war_dfm <- dfm_subset(script_dfm, text_type == "war")
 war_freq_df <- textstat_frequency(war_dfm) %>%
   data.frame(stringsAsFactors = F)
 knitr::kable(war_freq_df[1:20,], caption = "The 20 most frequent tokens in the war movie corpus.")
-# scientific
-scientific_dfm <- dfm_subset(script_dfm, text_type == "scientific")
+# science fiction
+sci_fi_dfm <- dfm_subset(script_dfm, text_type == "scifi")
 scie_freq_df <- textstat_frequency(scientific_dfm) %>%
   data.frame(stringsAsFactors = F)
-knitr::kable(scie_freq_df[1:20,], caption = "The 20 most frequent tokens in the scientific movie corpus.")
+knitr::kable(scie_freq_df[1:20,], caption = "The 20 most frequent tokens in the science fiction movie corpus.")
 # action
 action_dfm <- dfm_subset(script_dfm, text_type == "action")
 act_freq_df <- textstat_frequency(action_dfm) %>%
@@ -181,38 +181,26 @@ mc <- the_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
 knitr::kable(head(the_collocations), digits = 3)
 knitr::kable(head(mc), digits = 3)
 ```
-```{r science}
-science_df <- subset(script_df, text_type == "scientific")
-science_tokens <- science_df %>%
+```{r science fiction}
+# science fiction movie
+sci_fi_df <- subset(script_df, text_type == "scifi")
+sci_fi_tokens <- sci_fi_df %>%
   mutate(text = preprocess_text(text)) %>%
   corpus() %>%
   tokens(what="fastestword", remove_numbers=TRUE)
 
 # get collocation far science corpus
-the_collocations <- collocates_by_MI(science_tokens, "the")
+the_collocations <- collocates_by_MI(sci_fi_tokens, "the")
 mc <- the_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
 knitr::kable(head(the_collocations), digits = 3)
 knitr::kable(head(mc), digits = 3)
 ```
 
-```{r}
-# keyness - not necessary to include
-corpus_comp <- ntoken(script_dfm) %>% 
-  data.frame(Tokens = .) %>%
-  rownames_to_column("Text_Type") %>%
-  mutate(Text_Type = str_extract(Text_Type, "^[a-z]+")) %>%
-  group_by(Text_Type) %>%
-  dplyr::summarize(Texts = n(),
-    Tokens = sum(Tokens)) %>%
-  mutate(Text_Type = c("war", "scientific", "action", "thriler")) %>%
-  rename("Text-Type" = Text_Type) %>%
-  janitor::adorn_totals()
-```
 
 ```{r}
 # scientific
-scientific_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "text_type") == "scientific", measure = "lr")
-kableExtra::kbl(head(scientific_kw), caption = "Tokens with the highest keyness values in the scientific text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
+sci_fi_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "text_type") == "scifi", measure = "lr")
+kableExtra::kbl(head(sci_fi_kw), caption = "Tokens with the highest keyness values in the science fiction text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
 ```
