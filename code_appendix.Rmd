@@ -5,8 +5,6 @@ date: "12/10/2022"
 output: html_document
 ---
 
-
-
 ```{r}
 library(tidyverse)
 library(cmu.textstat)
@@ -46,12 +44,12 @@ corpus <- script_df %>%
   dplyr::select(doc_id, text)
 
 # assign meta data
-script_name <- str_extract(script_df$doc_id, "^[a-z]+")
-docvars(script, field = "genre") <- script_name
+movie_genre <- str_extract(script_df$doc_id, "^[a-z]+")
+docvars(script, field = "genre") <- movie_genre
 release_year <- str_extract(script_df$doc_id,"(\\d+)(?!.*\\d)")
 # release_year <- c(2005, 2008, 2012, 2010, 2020, 2014, 1998, 2002, 2000, 2006, 2017)
 docvars(script, field = "year") <- release_year
-knitr::kable(script %>% summary(), caption = "Summary of Norlan film corpus.")
+knitr::kable(script %>% summary() %>% base::subset(select=-c(Types, Sentences)), caption = "Summary of Norlan film corpus.")
 corpus_split <- split(corpus, seq(1, nrow(corpus), by = 10))
 ```
 
@@ -128,12 +126,12 @@ knitr::kable(thr_freq_df[1:20,], caption = "The 20 most frequent tokens in the t
 
 ```{r}
 # the collocation - does not necessary to include
-
 the_collocations <- collocates_by_MI(script_tokens, "the")
 mc <- the_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
 knitr::kable(head(the_collocations), digits = 3)
 knitr::kable(head(mc), digits = 3)
 ```
+
 ```{r collocation in war}
 # action corpus select
 script_df <- script_df %>%
@@ -166,6 +164,7 @@ mc <- the_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
 knitr::kable(head(the_collocations), digits = 3)
 knitr::kable(head(mc), digits = 3)
 ```
+
 ```{r thriler collocation}
 # thriller corpus select
 thriller_df <- subset(script_df, genre == "thriller")
@@ -180,6 +179,7 @@ mc <- the_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
 knitr::kable(head(the_collocations), digits = 3)
 knitr::kable(head(mc), digits = 3)
 ```
+
 ```{r science}
 science_df <- subset(script_df, genre == "scientific")
 science_tokens <- science_df %>%
@@ -215,6 +215,7 @@ kableExtra::kbl(head(scientific_kw), caption = "Tokens with the highest keyness 
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
 ```
+
 ```{r}
 # thriller
 thriller_dfm <- dfm_subset(script_dfm, genre == "thriller")
@@ -223,6 +224,7 @@ kableExtra::kbl(head(thriller_kw), caption = "Tokens with the highest keyness va
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
 ```
+
 ```{r}
 # war
 war_dfm <- dfm_subset(script_dfm, genre == "war")
@@ -292,33 +294,83 @@ fviz_eig(pca, addlabels = TRUE, ncp = 11) +
        more than 50% of the variances")
 
 pc_matrix <- pca$x
+
+# movie_genre <- str_extract(script_df$doc_id, "^[a-z]+")
+# docvars(script, field = "genre") <- movie_genre
+# release_year <- str_extract(script_df$doc_id,"(\\d+)(?!.*\\d)")
+# # release_year <- c(2005, 2008, 2012, 2010, 2020, 2014, 1998, 2002, 2000, 2006, 2017)
+# docvars(script, field = "year") <- release_year
+
 quant <- ds_counts %>%
   mutate(pc1 =  pc_matrix[,1],
          pc2 =  pc_matrix[,2],
-         doc_id =  ds_counts$doc_id)
+         doc_id = ds_counts$doc_id,
+         genre = movie_genre,
+         release_year = release_year)
+
 quant %>%
-  ggplot(aes(x = pc1, y = pc2, color = doc_id)) +
+  ggplot(aes(x = pc1, y = pc2, color = genre)) +
   geom_point(alpha = 0.5) +
   labs(x = "The first principal component",
         y = "The second principal component",
-title = "Total cup points is associated with
-the first principal component")
+title = "Movie genre is associated with the first principal component")
+
+fviz_pca_biplot(pca, pointshape = 19,
+                label =  "var",
+                # Plot PC1 and PC2
+                axes = c(1, 2),
+                # Change the alpha for the observations -
+                # which is represented by ind
+                alpha.ind = 0.25,
+                # Modify the alpha for the variables (var):
+                alpha.var = 0.75,
+                repel = TRUE,
+                # Set the color of the points to decades variable:
+                col.ind = spotify_songs$track_popularity,
+                # Modify the color of the variables
+                col.var = "purple")  +
+  labs(title = "Playlist genre is associated with 
+       the first principal component", color = "Playlist genre") +
+  theme(legend.position = "bottom")
 
 fviz_pca_biplot(pca,
+                pointshape = 19,
+                # geom.ind = "points",
                 label =  "var",
-                # Plot PC1 and PC3
-                axes = c(1, 3),
+                # Plot PC1 and PC2
+                axes = c(1, 2),
                 # Change the alpha for the observations -
                 # which is represented by ind
                 alpha.ind = 0.5,
-                # Modify the alpha for the variables (var): alpha.var = 0.75,
+                # Modify the alpha for the variables (var):
+                alpha.var = 0.75,
                 repel = TRUE,
-                # Set the color of the points to decades variable: col.ind = coffee_ratings$total_cup_points,
+                # Set the color of the points to decades variable:
+                col.ind = (quant$genre),
                 # Modify the color of the variables
-                col.var = "blue") +
-                  scale_color_gradient(low = "darkblue", high = "darkorange") +
-                  labs(title = "Movie categories are associated with the first principal component",
-                       color = "Movie categories") +
-                  theme(legend.position = "bottom")
+                col.var = "orange") +
+  labs(title = "PC1 vs PC2 by movie genres",
+       x = "The first principal component", 
+       y = "The second principal component",
+       color = "Movie genres") +
+  theme(legend.position = "bottom")
+
 ```
+
+```{r}
+rotation_df <- as.data.frame(pca$rotation) 
+action_feature_df <- rotation_df[rotation_df$PC1 > 0 & rotation_df$PC2 > 0,] %>% 
+  mutate(rat_pc1_pc2 = 
+           rotation_df[rotation_df$PC1 > 0 & rotation_df$PC2 > 0,]$PC1/
+           rotation_df[rotation_df$PC1 > 0 & rotation_df$PC2 > 0,]$PC2) %>% 
+  subset(select = c(PC1, PC2, rat_pc1_pc2))
+```
+```{r}
+action_feature_neg_df <- rotation_df[rotation_df$PC1 < 0 & rotation_df$PC2 < 0,] %>% 
+  mutate(rat_pc1_pc2 = 
+           rotation_df[rotation_df$PC1 < 0 & rotation_df$PC2 < 0,]$PC1/
+           rotation_df[rotation_df$PC1 < 0 & rotation_df$PC2 < 0,]$PC2) %>% 
+  subset(select = c(PC1, PC2, rat_pc1_pc2))
+```
+
 
