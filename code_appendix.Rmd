@@ -18,7 +18,7 @@ library(ggraph)
 library(corpus)
 library(syuzhet)
 library(udpipe)
-library(pseudobibeR)
+# library(pseudobibeR)
 library(readr)
 library(nFactors)
 library(future.apply)
@@ -29,8 +29,8 @@ library(tm)
 
 ```{r}
 # load data
-setwd("/Users/yanghandi/Desktop")
-script_df <- readtext("/Users/yanghandi/Desktop/468_final_project/data") %>%
+# setwd("/Users/yanghandi/Desktop")
+script_df <- readtext("./468_final_project/data") %>%
    mutate(text = preprocess_text(text,
                                  contractions = TRUE,
                                  hypens = TRUE,
@@ -39,22 +39,22 @@ script_df <- readtext("/Users/yanghandi/Desktop/468_final_project/data") %>%
                                  accent_replace = TRUE,
                                  remove_numbers = TRUE))
 
-kns_raw <- readtext("/Users/yanghandi/Desktop/468_final_project/data") %>% # Your path
-  corpus() %>%
-  tokens(remove_punct = F, remove_numbers = F, remove_symbols = F, what = "word")
-
 script <- corpus(script_df)
+
 corpus <- script_df %>%
-  mutate(text_type = str_extract(doc_id, "^[a-z]+")) %>%
+  mutate(genre = str_extract(doc_id, "^[a-z]+")) %>%
   dplyr::select(doc_id, text)
+
 # assign meta data
 script_name <- str_extract(script_df$doc_id, "^[a-z]+")
-docvars(script, field = "text_type") <- script_name
-release_year <- c(2005, 2008, 2012, 2010, 2020, 2014, 1998, 2002, 2000, 2006, 2017)
+docvars(script, field = "genre") <- script_name
+release_year <- str_extract(script_df$doc_id,"(\\d+)(?!.*\\d)")
+# release_year <- c(2005, 2008, 2012, 2010, 2020, 2014, 1998, 2002, 2000, 2006, 2017)
 docvars(script, field = "year") <- release_year
 knitr::kable(script %>% summary(), caption = "Summary of Norlan film corpus.")
 corpus_split <- split(corpus, seq(1, nrow(corpus), by = 10))
 ```
+
 ```{r}
 # remove proper noun from dataset
 library(future.apply)
@@ -74,8 +74,8 @@ anno_edit <- annotation %>%
 anno_edit <- structure(anno_edit, class = c("spacyr_parsed", "data.frame"))
 tkns <- as.tokens(anno_edit, include_pos = "pos", concatenator = "_")
 doc_categories <- names(tkns) %>%
-  data.frame(text_type = .) %>%
-  mutate(text_type = str_extract(text_type, "^[a-z]+"))
+  data.frame(genre = .) %>%
+  mutate(genre = str_extract(genre, "^[a-z]+"))
 docvars(tkns) <- doc_categories
 script_dfm <- dfm(tkns)
 script_dfm <- tkns %>%
@@ -101,27 +101,26 @@ script_tokens <- tokens(script)
 
 ```{r}
 # frequency
-
 freq_df <- textstat_frequency(script_dfm) %>%
   data.frame(stringsAsFactors = F)
 knitr::kable(freq_df[1:20,], caption = "The 20 most frequent tokens in the script corpus.")
 # war movie
-war_dfm <- dfm_subset(script_dfm, text_type == "war")
+war_dfm <- dfm_subset(script_dfm, genre == "war")
 war_freq_df <- textstat_frequency(war_dfm) %>%
   data.frame(stringsAsFactors = F)
 knitr::kable(war_freq_df[1:20,], caption = "The 20 most frequent tokens in the war movie corpus.")
 # scientific
-scientific_dfm <- dfm_subset(script_dfm, text_type == "scientific")
+scientific_dfm <- dfm_subset(script_dfm, genre == "scientific")
 scie_freq_df <- textstat_frequency(scientific_dfm) %>%
   data.frame(stringsAsFactors = F)
 knitr::kable(scie_freq_df[1:20,], caption = "The 20 most frequent tokens in the scientific movie corpus.")
 # action
-action_dfm <- dfm_subset(script_dfm, text_type == "action")
+action_dfm <- dfm_subset(script_dfm, genre == "action")
 act_freq_df <- textstat_frequency(action_dfm) %>%
   data.frame(stringsAsFactors = F)
 knitr::kable(act_freq_df[1:20,], caption = "The 20 most frequent tokens in the actio n movie corpus.")
 # thriller
-thriller_dfm <- dfm_subset(script_dfm, text_type == "thriller")
+thriller_dfm <- dfm_subset(script_dfm, genre == "thriller")
 thr_freq_df <- textstat_frequency(thriller_dfm) %>%
   data.frame(stringsAsFactors = F)
 knitr::kable(thr_freq_df[1:20,], caption = "The 20 most frequent tokens in the thriller movie corpus.")
@@ -138,8 +137,8 @@ knitr::kable(head(mc), digits = 3)
 ```{r collocation in war}
 # action corpus select
 script_df <- script_df %>%
-  mutate(text_type = str_extract(doc_id, "^[a-z]+"))
-action_df <- subset(script_df, text_type == "action")
+  mutate(genre = str_extract(doc_id, "^[a-z]+"))
+action_df <- subset(script_df, genre == "action")
 action_tokens <- action_df %>%
   mutate(text = preprocess_text(text)) %>%
   corpus() %>%
@@ -155,7 +154,7 @@ knitr::kable(head(mc), digits = 3)
 
 ```{r science collocation for the}
 # war corpus select
-war_df <- subset(script_df, text_type == "war")
+war_df <- subset(script_df, genre == "war")
 war_tokens <- war_df %>%
   mutate(text = preprocess_text(text)) %>%
   corpus() %>%
@@ -169,7 +168,7 @@ knitr::kable(head(mc), digits = 3)
 ```
 ```{r thriler collocation}
 # thriller corpus select
-thriller_df <- subset(script_df, text_type == "thriller")
+thriller_df <- subset(script_df, genre == "thriller")
 thriller_tokens <- thriller_df %>%
   mutate(text = preprocess_text(text)) %>%
   corpus() %>%
@@ -182,7 +181,7 @@ knitr::kable(head(the_collocations), digits = 3)
 knitr::kable(head(mc), digits = 3)
 ```
 ```{r science}
-science_df <- subset(script_df, text_type == "scientific")
+science_df <- subset(script_df, genre == "scientific")
 science_tokens <- science_df %>%
   mutate(text = preprocess_text(text)) %>%
   corpus() %>%
@@ -199,35 +198,35 @@ knitr::kable(head(mc), digits = 3)
 # keyness - not necessary to include
 corpus_comp <- ntoken(script_dfm) %>% 
   data.frame(Tokens = .) %>%
-  rownames_to_column("Text_Type") %>%
-  mutate(Text_Type = str_extract(Text_Type, "^[a-z]+")) %>%
-  group_by(Text_Type) %>%
+  rownames_to_column("genre") %>%
+  mutate(genre = str_extract(genre, "^[a-z]+")) %>%
+  group_by(genre) %>%
   dplyr::summarize(Texts = n(),
     Tokens = sum(Tokens)) %>%
-  mutate(Text_Type = c("war", "scientific", "action", "thriler")) %>%
-  rename("Text-Type" = Text_Type) %>%
+  mutate(genre = c("war", "scientific", "action", "thriler")) %>%
+  rename("Text-Type" = genre) %>%
   janitor::adorn_totals()
 ```
 
 ```{r}
 # scientific
-scientific_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "text_type") == "scientific", measure = "lr")
+scientific_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "genre") == "scientific", measure = "lr")
 kableExtra::kbl(head(scientific_kw), caption = "Tokens with the highest keyness values in the scientific text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
 ```
 ```{r}
 # thriller
-thriller_dfm <- dfm_subset(script_dfm, text_type == "thriller")
-thriller_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "text_type") == "thriller", measure = "lr")
+thriller_dfm <- dfm_subset(script_dfm, genre == "thriller")
+thriller_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "genre") == "thriller", measure = "lr")
 kableExtra::kbl(head(thriller_kw), caption = "Tokens with the highest keyness values in the thriller text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
 ```
 ```{r}
 # war
-war_dfm <- dfm_subset(script_dfm, text_type == "war")
-war_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "text_type") == "war", measure = "lr")
+war_dfm <- dfm_subset(script_dfm, genre == "war")
+war_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "genre") == "war", measure = "lr")
 kableExtra::kbl(head(war_kw), caption = "Tokens with the highest keyness values in the war text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
