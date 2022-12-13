@@ -1,15 +1,14 @@
 ---
-title: "CBE2_haley"
-author: "Handi Yang"
+title: "Code Appendix"
+author: "Haley Jiang, Handi Yang"
 date: "12/10/2022"
-output: html_document
+output: pdf_document
 ---
 
 ```{r}
 library(tidyverse)
 library(cmu.textstat)
 library(readtext)
-library(tidyverse)
 library(quanteda)
 library(quanteda.textstats)
 library(ggraph)
@@ -25,7 +24,11 @@ library(tidytext)
 library(tm)
 ```
 
-```{r}
+# Data preparation
+
+We will first load data, prepare corpus, and extract tokens.
+
+```{r load}
 # load data
 # setwd("/Users/yanghandi/Desktop")
 script_df <- readtext("./468_final_project/data") %>%
@@ -43,6 +46,13 @@ corpus <- script_df %>%
   mutate(genre = str_extract(doc_id, "^[a-z]+")) %>%
   dplyr::select(doc_id, text)
 
+# get raw tokens
+script_tokens <- tokens(script)
+```
+
+We will then assigned meta data to our corpus.
+
+```{r}
 # assign meta data
 movie_genre <- str_extract(script_df$doc_id, "^[a-z]+")
 docvars(script, field = "genre") <- movie_genre
@@ -50,10 +60,13 @@ release_year <- str_extract(script_df$doc_id,"(\\d+)(?!.*\\d)")
 # release_year <- c(2005, 2008, 2012, 2010, 2020, 2014, 1998, 2002, 2000, 2006, 2017)
 docvars(script, field = "year") <- release_year
 knitr::kable(script %>% summary() %>% base::subset(select=-c(Types, Sentences)), caption = "Summary of Norlan film corpus.")
-corpus_split <- split(corpus, seq(1, nrow(corpus), by = 10))
 ```
 
+To delete the character names before the lines and specific names in the scripts, we will annotate the tokens and delete proper nouns.
+
 ```{r}
+corpus_split <- split(corpus, seq(1, nrow(corpus), by = 10))
+
 # remove proper noun from dataset
 library(future.apply)
 ncores <- 4L
@@ -79,23 +92,9 @@ script_dfm <- dfm(tkns)
 script_dfm <- tkns %>%
   tokens_select("^.*[a-zA-Z0-9]+.*_propn", selection = "remove", valuetype = "regex", case_insensitive = T) %>%
   dfm()
-# get token 
-script_tokens <- tokens(script)
 ```
 
-```{r}
-# # biber annotation
-# ud_model <- udpipe_load_model("english-ewt-ud-2.5-191206.udpipe")
-# annotation <- udpipe(script_df, "english")
-# # parse data
-# script_prsd <- udpipe_annotate(ud_model, x = script_df$text, doc_id = script_df$doc_id)
-# # convert to dataframe
-# script_prsd <- data.frame(script_prsd, stringsAsFactors = F)
-# # biber
-# script_biber <- biber_udpipe(script_prsd)
-```
-
-
+# Frequency Analysis
 
 ```{r}
 # frequency
@@ -107,11 +106,11 @@ war_dfm <- dfm_subset(script_dfm, genre == "war")
 war_freq_df <- textstat_frequency(war_dfm) %>%
   data.frame(stringsAsFactors = F)
 knitr::kable(war_freq_df[1:20,], caption = "The 20 most frequent tokens in the war movie corpus.")
-# scientific
-scientific_dfm <- dfm_subset(script_dfm, genre == "scientific")
-scie_freq_df <- textstat_frequency(scientific_dfm) %>%
+# science fiction
+sci_fi_dfm <- dfm_subset(script_dfm, genre == "scifi")
+scie_freq_df <- textstat_frequency(sci_fi_dfm) %>%
   data.frame(stringsAsFactors = F)
-knitr::kable(scie_freq_df[1:20,], caption = "The 20 most frequent tokens in the scientific movie corpus.")
+knitr::kable(scie_freq_df[1:20,], caption = "The 20 most frequent tokens in the science fiction movie corpus.")
 # action
 action_dfm <- dfm_subset(script_dfm, genre == "action")
 act_freq_df <- textstat_frequency(action_dfm) %>%
@@ -124,8 +123,9 @@ thr_freq_df <- textstat_frequency(thriller_dfm) %>%
 knitr::kable(thr_freq_df[1:20,], caption = "The 20 most frequent tokens in the thriller movie corpus.")
 ```
 
+# Collocations
+
 ```{r}
-# the collocation - does not necessary to include
 the_collocations <- collocates_by_MI(script_tokens, "the")
 mc <- the_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
 knitr::kable(head(the_collocations), digits = 3)
@@ -147,7 +147,6 @@ the_collocations <- collocates_by_MI(action_tokens, "the")
 mc <- the_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
 knitr::kable(head(the_collocations), digits = 3)
 knitr::kable(head(mc), digits = 3)
-
 ```
 
 ```{r science collocation for the}
@@ -173,45 +172,33 @@ thriller_tokens <- thriller_df %>%
   corpus() %>%
   tokens(what="fastestword", remove_numbers=TRUE)
 
-# get collocation far war corpus
+# get collocation far thriller corpus
 the_collocations <- collocates_by_MI(thriller_tokens, "the")
 mc <- the_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
 knitr::kable(head(the_collocations), digits = 3)
 knitr::kable(head(mc), digits = 3)
 ```
 
-```{r science}
-science_df <- subset(script_df, genre == "scientific")
-science_tokens <- science_df %>%
+```{r science fiction}
+# science fiction movie
+sci_fi_df <- subset(script_df, genre == "scifi")
+sci_fi_tokens <- sci_fi_df %>%
   mutate(text = preprocess_text(text)) %>%
   corpus() %>%
   tokens(what="fastestword", remove_numbers=TRUE)
 
 # get collocation far science corpus
-the_collocations <- collocates_by_MI(science_tokens, "the")
+the_collocations <- collocates_by_MI(sci_fi_tokens, "the")
 mc <- the_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
 knitr::kable(head(the_collocations), digits = 3)
 knitr::kable(head(mc), digits = 3)
 ```
 
-```{r}
-# keyness - not necessary to include
-corpus_comp <- ntoken(script_dfm) %>% 
-  data.frame(Tokens = .) %>%
-  rownames_to_column("genre") %>%
-  mutate(genre = str_extract(genre, "^[a-z]+")) %>%
-  group_by(genre) %>%
-  dplyr::summarize(Texts = n(),
-    Tokens = sum(Tokens)) %>%
-  mutate(genre = c("war", "scientific", "action", "thriler")) %>%
-  rename("Text-Type" = genre) %>%
-  janitor::adorn_totals()
-```
 
 ```{r}
-# scientific
-scientific_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "genre") == "scientific", measure = "lr")
-kableExtra::kbl(head(scientific_kw), caption = "Tokens with the highest keyness values in the scientific text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
+# science fiction
+sci_fi_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "genre") == "scifi", measure = "lr")
+kableExtra::kbl(head(sci_fi_kw), caption = "Tokens with the highest keyness values in the science fiction text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
 ```
@@ -224,7 +211,6 @@ kableExtra::kbl(head(thriller_kw), caption = "Tokens with the highest keyness va
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
 ```
-
 ```{r}
 # war
 war_dfm <- dfm_subset(script_dfm, genre == "war")
@@ -235,34 +221,29 @@ kableExtra::kbl(head(war_kw), caption = "Tokens with the highest keyness values 
 ```
 
 ```{r}
+# action
+action_kw <- textstat_keyness(script_dfm, docvars(script_dfm, "genre") == "action", measure = "lr")
+kableExtra::kbl(head(action_kw), caption = "Tokens with the highest keyness values in the action text-type when compared to the rest of the sample corpus.", booktabs = T, linesep = "", digits = 2) %>%
+  kableExtra::kable_styling(latex_options = "HOLD_position") %>%
+  kableExtra::kable_classic()
 ```
 
-collocations
-```{r}
-# collocation protagonist
-```
 
-```{r}
-science_sus <- keyness_table(scientific_dfm, suspense_dfm)
-kableExtra::kbl(head(science_sus), caption = "Tokens with the highest keyness values in the scientific movie when compared to other genre.", booktabs = T, linesep = "", digits = 2) %>%
+```{r keyness between action and thriller}
+thri_action <- keyness_table(thriller_dfm, action_dfm)
+kableExtra::kbl(head(thri_action), caption = "Tokens with the highest keyness values in the thriller movie when compared to action genre.", booktabs = T, linesep = "", digits = 2) %>%
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
 ```
 
 ```{r}
-sus_science <- keyness_table(suspense_dfm, scientific_dfm)
-kableExtra::kbl(head(sus_science), caption = "Tokens with the highest keyness values in the suspense movie when compared to the scientific movie.", booktabs = T, linesep = "", digits = 2) %>%
+action_thri <- keyness_table(action_dfm, thriller_dfm)
+kableExtra::kbl(head(action_thri), caption = "Tokens with the highest keyness values in the action movie when compared to the thriller movie.", booktabs = T, linesep = "", digits = 2) %>%
   kableExtra::kable_styling(latex_options = "HOLD_position") %>%
   kableExtra::kable_classic()
 ```
 
-```{r}
-con_collocations <- collocates_by_MI(script_tokens, "continuous")
-mc <- con_collocations %>% filter(col_freq >= 5 & MI_1 >= 5)
-knitr::kable(head(con_collocations), digits = 3)
-knitr::kable(head(mc), digits = 3)
-```
-
+# Principal Component Analysis
 
 ```{r DocuScope}
 ds_counts <- script_tokens %>%
@@ -281,10 +262,11 @@ ds_counts <- ds_counts %>%
   dplyr::mutate_if(is.numeric, list(~./tot_counts), na.rm = TRUE) %>%
   dplyr::mutate_if(is.numeric, list(~.*100), na.rm = TRUE) %>%
   dplyr::select(-tot_counts)
+```
 
+```{r}
 pca <- prcomp(ds_counts[-1], center = TRUE, scale. = TRUE)
 summary(pca)
-
 
 library(factoextra)
 fviz_eig(pca, addlabels = TRUE, ncp = 11) +
@@ -294,12 +276,6 @@ fviz_eig(pca, addlabels = TRUE, ncp = 11) +
        more than 50% of the variances")
 
 pc_matrix <- pca$x
-
-# movie_genre <- str_extract(script_df$doc_id, "^[a-z]+")
-# docvars(script, field = "genre") <- movie_genre
-# release_year <- str_extract(script_df$doc_id,"(\\d+)(?!.*\\d)")
-# # release_year <- c(2005, 2008, 2012, 2010, 2020, 2014, 1998, 2002, 2000, 2006, 2017)
-# docvars(script, field = "year") <- release_year
 
 quant <- ds_counts %>%
   mutate(pc1 =  pc_matrix[,1],
@@ -314,24 +290,6 @@ quant %>%
   labs(x = "The first principal component",
         y = "The second principal component",
 title = "Movie genre is associated with the first principal component")
-
-fviz_pca_biplot(pca, pointshape = 19,
-                label =  "var",
-                # Plot PC1 and PC2
-                axes = c(1, 2),
-                # Change the alpha for the observations -
-                # which is represented by ind
-                alpha.ind = 0.25,
-                # Modify the alpha for the variables (var):
-                alpha.var = 0.75,
-                repel = TRUE,
-                # Set the color of the points to decades variable:
-                col.ind = spotify_songs$track_popularity,
-                # Modify the color of the variables
-                col.var = "purple")  +
-  labs(title = "Playlist genre is associated with 
-       the first principal component", color = "Playlist genre") +
-  theme(legend.position = "bottom")
 
 fviz_pca_biplot(pca,
                 pointshape = 19,
@@ -365,6 +323,7 @@ action_feature_df <- rotation_df[rotation_df$PC1 > 0 & rotation_df$PC2 > 0,] %>%
            rotation_df[rotation_df$PC1 > 0 & rotation_df$PC2 > 0,]$PC2) %>% 
   subset(select = c(PC1, PC2, rat_pc1_pc2))
 ```
+
 ```{r}
 action_feature_neg_df <- rotation_df[rotation_df$PC1 < 0 & rotation_df$PC2 < 0,] %>% 
   mutate(rat_pc1_pc2 = 
